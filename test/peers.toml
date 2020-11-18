@@ -1,0 +1,7 @@
+[addresses]
+    [addresses.peer1]
+    address = "192.168.1.1"
+    port = "1080"
+    [addresses.peer2]
+    address = "192.168.1.2"
+    port = "1080"
