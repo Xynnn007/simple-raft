@@ -1,4 +1,4 @@
-package consensus
+package node
 
 const (
 	LEADER    = 0

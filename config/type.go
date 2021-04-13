@@ -7,4 +7,5 @@ type Global struct {
 type Peer struct {
 	Address string
 	Port    string
+	Id      int
 }

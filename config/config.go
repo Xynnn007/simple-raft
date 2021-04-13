@@ -6,12 +6,15 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-type Config struct {
-	Addresses map[string]Peer
+type NodeConfig struct {
+	Peers   map[string]Peer
+	Address string
+	Port    string
+	Id      int
 }
 
 type Client struct {
-	Config *Config
+	Config *NodeConfig
 }
 
 func New(path string) (*Client, error) {
@@ -20,7 +23,7 @@ func New(path string) (*Client, error) {
 		return nil, err
 	}
 
-	var cfg Config
+	var cfg NodeConfig
 	err = toml.Unmarshal(data, &cfg)
 	if err != nil {
 		return nil, err

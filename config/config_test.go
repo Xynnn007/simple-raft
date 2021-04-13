@@ -16,7 +16,7 @@ func Test_New(t *testing.T) {
 	cfg, err := New(path)
 	assert.NoError(t, err)
 
-	for k, v := range cfg.Config.Addresses {
+	for k, v := range cfg.Config.Peers {
 		log.Infof("%s : %s", k, v)
 	}
 }
