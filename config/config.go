@@ -6,11 +6,17 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+type Peer struct {
+	Address string `toml:address`
+	Port    string `toml:port`
+	Id      int    `toml:id`
+}
+
 type NodeConfig struct {
-	Peers   map[string]Peer
-	Address string
-	Port    string
-	Id      int
+	Address string `toml:address`
+	Port    string `toml:port`
+	Id      int    `toml:id`
+	Peers   []Peer `toml:peers`
 }
 
 type Client struct {
