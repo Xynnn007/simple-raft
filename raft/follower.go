@@ -7,6 +7,7 @@ import (
 )
 
 func (n *Node) startFollower() {
+	log.Infof("Start follower..")
 	if n.State == CANDIDATE {
 		n.exitCandidate <- 1
 	}

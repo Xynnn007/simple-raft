@@ -10,14 +10,17 @@ import (
 )
 
 func (n *Node) startCandidate() {
+	if n.State == CANDIDATE {
+		return
+	}
+
 	n.State = CANDIDATE
 	n.CurrentTerm++
 	n.getVotes = 1
 	n.VoteFor = n.Myself.Id
 
-	log.Debug("Start send votereq...")
+	log.Debug("Sending votereq...")
 	n.sendVotereq()
-	log.Debug("Send votereq done.")
 
 	rand.Seed(time.Now().Unix())
 	randTime := int64(1000.0*HEARTBEAT_INTERVAL*(rand.Int()/math.MaxInt32)) * 1000
@@ -34,24 +37,27 @@ func (n *Node) startCandidate() {
 
 func (n *Node) sendVotereq() {
 	for id := range n.Peers {
-		go func(id int) {
-			req := VoteRequest{
-				Term:         n.CurrentTerm,
-				CandidateId:  n.Myself.Id,
-				LastLogIndex: n.LogIndex,
-				LastLogTerm:  n.Records.FindTerm(n.LogIndex),
+		go func(index int) {
+			req := Message{
+				Type: VOTE_REQ,
+				VoteRequest: &VoteRequest{
+					Term:         n.CurrentTerm,
+					CandidateId:  n.Myself.Id,
+					LastLogIndex: n.LogIndex,
+					LastLogTerm:  n.Records.FindTerm(n.LogIndex),
+				},
 			}
 
 			data, err := json.Marshal(req)
 			if err != nil {
-				log.Errorf("Send vote request to %v failed: %v", id, err)
+				log.Errorf("Send vote request to %v failed: %v", index, err)
 				return
 			}
 
-			log.Debugf("Send votereq to %v", id)
-			err = n.send(id, data)
+			log.Debugf("Send votereq to %v", index)
+			err = n.send(index, data)
 			if err != nil {
-				log.Errorf("Send vote request to %v failed: %v", id, err)
+				log.Errorf("Send vote request to %v failed: %v", index, err)
 			}
 		}(id)
 	}

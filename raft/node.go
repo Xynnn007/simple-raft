@@ -59,11 +59,11 @@ func New(nc *config.NodeConfig) *Node {
 		CurrentTerm: 0,
 
 		State:    FOLLOWER,
-		LogIndex: -1,
+		LogIndex: 0,
 		Records:  Entries{},
 
-		commitIndex: -1,
-		lastApplied: -1,
+		commitIndex: 0,
+		lastApplied: 0,
 		getVotes:    0,
 
 		nextIndex:  make(map[int]int),
@@ -75,7 +75,15 @@ func New(nc *config.NodeConfig) *Node {
 		Timer: time.NewTicker(CHECKLEADER_INTERVAL * time.Second),
 	}
 	for _, v := range nc.Peers {
-		n.Peers[v.Id] = &v
+		n.Peers[v.Id] = &config.Peer{
+			Address: v.Address,
+			Port:    v.Port,
+			Id:      v.Id,
+		}
+	}
+
+	for k := range n.Peers {
+		log.Debugf("New peer, id: %v --> %v", k, *n.Peers[k])
 	}
 	n.TotalPeersCount = len(n.Peers)
 
@@ -87,26 +95,25 @@ func (n *Node) SetTransporter(t Transporter) {
 }
 
 func (n *Node) Start() {
-	n.startFollower()
+	go n.startFollower()
 	recv := n.TransInterface.Recv()
-	go func() {
-		for {
-			message, ok := <-recv
-			if !ok {
-				log.Error("Failed to get message from channel.")
-				continue
-			}
 
-			body := &Message{}
-			err := json.Unmarshal(message, body)
-			if err != nil {
-				log.Errorf("Failed to get message : %v.", err)
-				continue
-			}
-
-			n.handle(body)
+	for {
+		message, ok := <-recv
+		if !ok {
+			log.Error("Failed to get message from channel.")
+			continue
 		}
-	}()
+
+		body := &Message{}
+		err := json.Unmarshal(message, body)
+		if err != nil {
+			log.Errorf("Failed to get message : %v.", err)
+			continue
+		}
+		log.Debugf("Handle message : %v", *body)
+		n.handle(body)
+	}
 }
 
 func (n *Node) handle(m *Message) {
@@ -118,17 +125,15 @@ func (n *Node) handle(m *Message) {
 	case APPEND_REQ:
 		n.handleAppendReq(m.AppendRequest)
 	case APPEND_RES:
-		n.handleAppendRes(m.AppendReponse)
+		n.handleAppendRes(m.AppendResponse)
 	default:
 		n.handleClientReq(m.ClientRequest)
 	}
 }
 
 func (n *Node) send(id int, data []byte) error {
-	target := n.Peers[id]
-	address := target.Address
-	port := target.Port
-
+	address := n.Peers[id].Address
+	port := n.Peers[id].Port
 	return n.TransInterface.Send(address, port, data)
 }
 

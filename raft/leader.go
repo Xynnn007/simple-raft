@@ -8,12 +8,16 @@ import (
 )
 
 func (n *Node) startLeader() {
+	if n.State == LEADER {
+		return
+	}
+
 	if n.State == CANDIDATE {
 		n.exitCandidate <- 1
 	}
 
 	n.State = LEADER
-
+	log.Infof("Start leader..")
 	n.Timer.Stop()
 	// reset nextIndex
 	for k, _ := range n.nextIndex {
@@ -46,22 +50,27 @@ func (n *Node) stopLeader() {
 func (n *Node) sendHeartbeat() {
 	for id := range n.Peers {
 		go func(id int) {
-			req := AppendRequest{
-				Term:         n.CurrentTerm,
-				LeaderId:     n.Myself.Id,
-				LeaderCommit: n.commitIndex,
-				PrevLogIndex: n.matchIndex[id],
+			req := Message{
+				Type: APPEND_REQ,
+				AppendRequest: &AppendRequest{
+					Term:         n.CurrentTerm,
+					LeaderId:     n.Myself.Id,
+					LeaderCommit: n.commitIndex,
+					PrevLogIndex: n.matchIndex[id],
+				},
 			}
+			if req.PrevLogIndex != n.LogIndex {
+				term := n.Records.FindTerm(req.PrevLogIndex)
 
-			term := n.Records.FindTerm(req.PrevLogIndex)
+				if term == -1 {
+					log.Errorf("Can not find entry of id %v to peer %v", req.PrevLogIndex, id)
+					return
+				}
 
-			if term == -1 {
-				log.Errorf("Can not find entry of id %v to peer %v", req.PrevLogIndex, id)
-				return
+				req.AppendRequest.PrevLogTerm = term
+				req.AppendRequest.Entries = n.Records.GetRange(n.nextIndex[id], ENTRY_PER_REQ)
+
 			}
-
-			req.PrevLogTerm = term
-			req.Entries = n.Records.GetRange(n.nextIndex[id], ENTRY_PER_REQ)
 
 			data, err := json.Marshal(req)
 			if err != nil {

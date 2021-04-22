@@ -16,8 +16,10 @@ type HttpClient struct {
 
 func (c *HttpClient) Send(address string, port string, data []byte) error {
 	reader := bytes.NewReader(data)
+	body := string(data)
 	_, err := oshttp.Post("http://"+address+":"+port, "application/json", reader)
-	log.Debugf("Post to %v:%v", address, port)
+
+	log.Debugf("Post to %v:%v\n %v", address, port, body)
 
 	return err
 }
@@ -45,6 +47,6 @@ func (c *HttpClient) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 		log.Errorf("Http get request failed: %v", err)
 		return
 	}
-	log.Debugf("Got message from %v", r.RemoteAddr)
+	log.Debugf("Got message from %v: %v", r.RemoteAddr, string(body))
 	c.recvchan <- body
 }

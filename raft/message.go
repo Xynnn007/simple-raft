@@ -23,7 +23,7 @@ type Message struct {
 	*VoteRequest
 	*VoteResponse
 	*AppendRequest
-	*AppendReponse
+	*AppendResponse
 	*ClientRequest
 }
 
@@ -48,7 +48,7 @@ type AppendRequest struct {
 	LeaderCommit int
 }
 
-type AppendReponse struct {
+type AppendResponse struct {
 	Term    int
 	Id      int
 	Index   int
@@ -60,9 +60,13 @@ type ClientRequest struct {
 }
 
 func (n *Node) handleVoteReq(v *VoteRequest) error {
-	res := VoteResponse{
-		Term:        n.CurrentTerm,
-		VoteGranted: false,
+	log.Debugf("Vote Request: %v", v)
+	res := Message{
+		Type: VOTE_RES,
+		VoteResponse: &VoteResponse{
+			Term:        n.CurrentTerm,
+			VoteGranted: false,
+		},
 	}
 
 	if n.CurrentTerm > v.Term {
@@ -73,6 +77,7 @@ func (n *Node) handleVoteReq(v *VoteRequest) error {
 			return fmt.Errorf("reject vote failed: %v", err)
 		}
 
+		log.Debugf("Send voteres data: %v", string(data))
 		err = n.send(v.CandidateId, data)
 		if err != nil {
 			return fmt.Errorf("reject vote failed: %v", err)
@@ -85,15 +90,16 @@ func (n *Node) handleVoteReq(v *VoteRequest) error {
 		log.Infof("Vote for candidate %v of term %v.", v.CandidateId, v.Term)
 		n.VoteFor = v.CandidateId
 
-		n.startFollower()
-		res.Term = v.Term
-		res.VoteGranted = true
+		go n.startFollower()
+		res.VoteResponse.Term = v.Term
+		res.VoteResponse.VoteGranted = true
 
 		data, err := json.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("vote failed: %v", err)
 		}
 
+		log.Debugf("Send voteres data: %v", string(data))
 		err = n.send(v.CandidateId, data)
 		if err != nil {
 			return fmt.Errorf("vote failed: %v", err)
@@ -107,6 +113,7 @@ func (n *Node) handleVoteReq(v *VoteRequest) error {
 		return fmt.Errorf("reject vote failed: %v", err)
 	}
 
+	log.Debugf("Send voteres data: %v", string(data))
 	err = n.send(v.CandidateId, data)
 	if err != nil {
 		return fmt.Errorf("reject vote failed: %v", err)
@@ -116,38 +123,43 @@ func (n *Node) handleVoteReq(v *VoteRequest) error {
 }
 
 func (n *Node) handleVoteRes(v *VoteResponse) {
+	log.Debugf("Vote Response: %v", *v)
 	if n.State != CANDIDATE {
 		return
 	}
 
 	if v.Term > n.CurrentTerm {
-		n.startFollower()
+		go n.startFollower()
 		return
 	}
 
 	if v.VoteGranted {
 		n.getVotes++
 		if n.getVotes > n.TotalPeersCount/2 {
-			n.startLeader()
+			go n.startLeader()
 		}
 	}
 }
 
 func (n *Node) handleAppendReq(v *AppendRequest) error {
 	var err error
-	res := AppendReponse{
-		Id:      n.Myself.Id,
-		Term:    n.CurrentTerm,
-		Success: true,
+	res := Message{
+		Type: APPEND_RES,
+		AppendResponse: &AppendResponse{
+			Id:      n.Myself.Id,
+			Term:    n.CurrentTerm,
+			Success: true,
+		},
 	}
 
 	if n.CurrentTerm > v.Term {
-		res.Success = false
+		res.AppendResponse.Success = false
 		data, err := json.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("send reject appendRequest failed: %v", err)
 		}
 
+		log.Debugf("Send appendres data: %v", string(data))
 		err = n.send(v.LeaderId, data)
 		if err != nil {
 			return fmt.Errorf("send reject appendRequest failed: %v", err)
@@ -160,18 +172,19 @@ func (n *Node) handleAppendReq(v *AppendRequest) error {
 		log.Infof("Start following leader %v.", v.LeaderId)
 		go n.startFollower()
 	} else {
-		log.Infof("Get heartbeat from leader %v.", v.LeaderId)
+		n.Leader = v.LeaderId
 		n.refreshHeartbeat()
 	}
 
 	index := n.Records.Find(v.PrevLogTerm, v.PrevLogIndex)
 	if index == -1 {
-		res.Success = false
+		res.AppendResponse.Success = false
 		data, err := json.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("send reject appendRequest failed: %v", err)
 		}
 
+		log.Debugf("Send appendres data: %v", string(data))
 		err = n.send(v.LeaderId, data)
 		if err != nil {
 			return fmt.Errorf("send reject appendRequest failed: %v", err)
@@ -207,12 +220,13 @@ func (n *Node) handleAppendReq(v *AppendRequest) error {
 		n.commitIndex = misc.Min(v.LeaderCommit, v.Entries[len(v.Entries)-1].Index)
 	}
 
-	res.Index = n.LogIndex
+	res.AppendResponse.Index = n.LogIndex
 	data, err := json.Marshal(res)
 	if err != nil {
 		return fmt.Errorf("send accept appendRequest failed: %v", err)
 	}
 
+	log.Debugf("Send appendres data: %v", string(data))
 	err = n.send(v.LeaderId, data)
 	if err != nil {
 		return fmt.Errorf("send accept appendRequest failed: %v", err)
@@ -220,7 +234,7 @@ func (n *Node) handleAppendReq(v *AppendRequest) error {
 	return err
 }
 
-func (n *Node) handleAppendRes(v *AppendReponse) {
+func (n *Node) handleAppendRes(v *AppendResponse) {
 	if v.Success {
 		n.nextIndex[v.Id] = v.Index + 1
 		n.matchIndex[v.Id] = v.Index

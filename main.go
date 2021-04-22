@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
-	"os/signal"
 
 	"github.com/Xynnn007/DFS/config"
 	"github.com/Xynnn007/DFS/network/http"
@@ -13,7 +11,11 @@ import (
 )
 
 func init() {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
+	customFormatter := new(log.TextFormatter)
+	customFormatter.TimestampFormat = "2006-01-02 15:04:05"
+	log.SetFormatter(customFormatter)
+	customFormatter.FullTimestamp = true
 }
 
 func main() {
@@ -30,9 +32,4 @@ func main() {
 	r := raft.New(cfg.Config)
 	r.SetTransporter(n)
 	r.Start()
-
-	c := make(chan os.Signal)
-	signal.Notify(c)
-	<-c
-	log.Info("Get EXIT signal, exited!")
 }
