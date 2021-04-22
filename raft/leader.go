@@ -8,6 +8,7 @@ import (
 )
 
 func (n *Node) startLeader() {
+	n.VoteFor = -1
 	if n.State == LEADER {
 		return
 	}
@@ -26,7 +27,7 @@ func (n *Node) startLeader() {
 	}
 
 	// heartbeat timer
-	n.Timer.Reset(HEARTBEAT_INTERVAL * time.Second)
+	n.Timer.Reset(HEARTBEAT_INTERVAL * time.Millisecond)
 
 	for {
 		select {
@@ -48,12 +49,13 @@ func (n *Node) stopLeader() {
 }
 
 func (n *Node) sendHeartbeat() {
+	log.Infof("Send heartbeat")
 	for id := range n.Peers {
 		go func(id int) {
 			req := Message{
 				Type: APPEND_REQ,
+				Term: n.CurrentTerm,
 				AppendRequest: &AppendRequest{
-					Term:         n.CurrentTerm,
 					LeaderId:     n.Myself.Id,
 					LeaderCommit: n.commitIndex,
 					PrevLogIndex: n.matchIndex[id],
@@ -78,10 +80,7 @@ func (n *Node) sendHeartbeat() {
 				return
 			}
 
-			err = n.send(id, data)
-			if err != nil {
-				log.Errorf("Send heartbeat to %v failed: %v", id, err)
-			}
+			n.send(id, data, "Send heartbeat")
 		}(id)
 	}
 }

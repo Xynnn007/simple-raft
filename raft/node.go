@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	HEARTBEAT_INTERVAL   = 1
-	CHECKLEADER_INTERVAL = 5
+	HEARTBEAT_INTERVAL   = 300  //ms
+	CHECKLEADER_INTERVAL = 1000 //ms
 )
 
 type Transporter interface {
@@ -58,7 +58,7 @@ func New(nc *config.NodeConfig) *Node {
 		VoteFor:     -1,
 		CurrentTerm: 0,
 
-		State:    FOLLOWER,
+		State:    INIT,
 		LogIndex: 0,
 		Records:  Entries{},
 
@@ -111,7 +111,7 @@ func (n *Node) Start() {
 			log.Errorf("Failed to get message : %v.", err)
 			continue
 		}
-		log.Debugf("Handle message : %v", *body)
+		log.Debugf("Handle message : %v", string(message))
 		n.handle(body)
 	}
 }
@@ -119,22 +119,27 @@ func (n *Node) Start() {
 func (n *Node) handle(m *Message) {
 	switch m.Type {
 	case VOTE_REQ:
-		n.handleVoteReq(m.VoteRequest)
+		n.handleVoteReq(m.VoteRequest, m.Term)
 	case VOTE_RES:
-		n.handleVoteRes(m.VoteResponse)
+		n.handleVoteRes(m.VoteResponse, m.Term)
 	case APPEND_REQ:
-		n.handleAppendReq(m.AppendRequest)
+		n.handleAppendReq(m.AppendRequest, m.Term)
 	case APPEND_RES:
-		n.handleAppendRes(m.AppendResponse)
+		n.handleAppendRes(m.AppendResponse, m.Term)
 	default:
 		n.handleClientReq(m.ClientRequest)
 	}
 }
 
-func (n *Node) send(id int, data []byte) error {
+func (n *Node) send(id int, data []byte, errmsg string) {
 	address := n.Peers[id].Address
 	port := n.Peers[id].Port
-	return n.TransInterface.Send(address, port, data)
+	go func() {
+		err := n.TransInterface.Send(address, port, data)
+		if err != nil {
+			log.Errorf("Send to %v failed, content : %v. error:%v:%v", id, string(data), errmsg, err)
+		}
+	}()
 }
 
 func (n *Node) handleClientReq(r *ClientRequest) {
@@ -149,11 +154,7 @@ func (n *Node) handleClientReq(r *ClientRequest) {
 			return
 		}
 
-		err = n.send(n.Leader, data)
-		if err != nil {
-			log.Errorf("Forward client request to leader %v failed: %v", n.Leader, err)
-			return
-		}
+		n.send(n.Leader, data, "Forward client request to leader")
 		log.Infof("Forward client request to leader %v", n.Leader)
 	} else {
 		n.LogIndex++

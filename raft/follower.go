@@ -7,7 +7,10 @@ import (
 )
 
 func (n *Node) startFollower() {
-	log.Infof("Start follower..")
+	if n.State == FOLLOWER {
+		return
+	}
+	n.VoteFor = -1
 	if n.State == CANDIDATE {
 		n.exitCandidate <- 1
 	}
@@ -17,15 +20,16 @@ func (n *Node) startFollower() {
 	}
 
 	n.State = FOLLOWER
-
-	n.Timer.Reset(CHECKLEADER_INTERVAL * time.Second)
+	log.Infof("Start follower..")
+	n.Timer.Reset(CHECKLEADER_INTERVAL * time.Millisecond)
 
 	<-n.Timer.C
-	log.Info("Timeout for heartbeat, turn into Candidate")
+	n.CurrentTerm++
+	log.Infof("Timeout for heartbeat, turn into Candidate with term %v", n.CurrentTerm)
 	n.startCandidate()
 }
 
 func (n *Node) refreshHeartbeat() {
 	log.Infof("Get heartbeat from leader %v", n.Leader)
-	n.Timer.Reset(CHECKLEADER_INTERVAL * time.Second)
+	n.Timer.Reset(CHECKLEADER_INTERVAL * time.Millisecond)
 }

@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	CHANNEL_SIZE = 100
+)
+
 type HttpClient struct {
 	recvchan chan []byte
 }
@@ -30,7 +34,7 @@ func (c *HttpClient) Recv() chan []byte {
 
 func New(port string) *HttpClient {
 	h := &HttpClient{
-		recvchan: make(chan []byte),
+		recvchan: make(chan []byte, CHANNEL_SIZE),
 	}
 
 	oshttp.HandleFunc("/", h.ServeHTTP)

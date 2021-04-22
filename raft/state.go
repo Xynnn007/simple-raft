@@ -1,6 +1,7 @@
 package raft
 
 const (
+	INIT      = -1
 	LEADER    = 0
 	CANDIDATE = 1
 	FOLLOWER  = 2

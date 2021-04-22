@@ -2,7 +2,6 @@ package raft
 
 import (
 	"encoding/json"
-	"math"
 	"math/rand"
 	"time"
 
@@ -10,10 +9,6 @@ import (
 )
 
 func (n *Node) startCandidate() {
-	if n.State == CANDIDATE {
-		return
-	}
-
 	n.State = CANDIDATE
 	n.CurrentTerm++
 	n.getVotes = 1
@@ -22,9 +17,9 @@ func (n *Node) startCandidate() {
 	log.Debug("Sending votereq...")
 	n.sendVotereq()
 
-	rand.Seed(time.Now().Unix())
-	randTime := int64(1000.0*HEARTBEAT_INTERVAL*(rand.Int()/math.MaxInt32)) * 1000
-	n.Timer.Reset(time.Duration(randTime))
+	randTime := rand.Int63n(200) + 100
+	log.Infof("Wait for %v ms as overtime", randTime)
+	n.Timer.Reset(time.Duration(randTime) * time.Millisecond)
 
 	select {
 	case <-n.exitCandidate:
@@ -40,14 +35,18 @@ func (n *Node) sendVotereq() {
 		go func(index int) {
 			req := Message{
 				Type: VOTE_REQ,
+				Term: n.CurrentTerm,
 				VoteRequest: &VoteRequest{
-					Term:         n.CurrentTerm,
+
 					CandidateId:  n.Myself.Id,
 					LastLogIndex: n.LogIndex,
 					LastLogTerm:  n.Records.FindTerm(n.LogIndex),
 				},
 			}
-
+			req.Term = n.CurrentTerm
+			if req.LastLogIndex == 0 {
+				req.LastLogTerm = 0
+			}
 			data, err := json.Marshal(req)
 			if err != nil {
 				log.Errorf("Send vote request to %v failed: %v", index, err)
@@ -55,10 +54,7 @@ func (n *Node) sendVotereq() {
 			}
 
 			log.Debugf("Send votereq to %v", index)
-			err = n.send(index, data)
-			if err != nil {
-				log.Errorf("Send vote request to %v failed: %v", index, err)
-			}
+			n.send(index, data, "Send vote")
 		}(id)
 	}
 }
