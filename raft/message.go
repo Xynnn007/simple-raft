@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Xynnn007/DFS/misc"
+	"github.com/Xynnn007/simple-raft/misc"
 	log "github.com/sirupsen/logrus"
 )
 

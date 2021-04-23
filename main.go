@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/Xynnn007/DFS/config"
-	"github.com/Xynnn007/DFS/network/http"
-	"github.com/Xynnn007/DFS/raft"
+	"github.com/Xynnn007/simple-raft/config"
+	"github.com/Xynnn007/simple-raft/network/http"
+	"github.com/Xynnn007/simple-raft/raft"
 
 	log "github.com/sirupsen/logrus"
 )

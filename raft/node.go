@@ -6,7 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/Xynnn007/DFS/config"
+	"github.com/Xynnn007/simple-raft/config"
 )
 
 const (

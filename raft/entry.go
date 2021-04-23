@@ -1,6 +1,6 @@
 package raft
 
-import "github.com/Xynnn007/DFS/misc"
+import "github.com/Xynnn007/simple-raft/misc"
 
 // Because after searching for a term-index pair, we often delete the elements after the target one
 // vector, or the slice will be the best one

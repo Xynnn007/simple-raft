@@ -1,4 +1,4 @@
-# DFS
+# simple-raft
 
 基于Raft的分布式存储
 
