@@ -1,6 +1,6 @@
 # simple-raft
 
-基于Raft的分布式存储
+基于Raft的分布式框架
 
 ## 节点配置
 
