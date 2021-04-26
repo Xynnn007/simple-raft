@@ -1,13 +1,13 @@
 .PHONY: all build gotool clean help
 
 BINARY="main"
-PATH="bin"
+PATH="build"
 GO_VERSION=$(shell go version)
 BUILD_TIME=$(shell date +%F-%Z/%T)
 COMMIT_ID=$(shell git rev-parse --short HEAD)
 LDFLAGS=-ldflags "-X 'main.GoVersion=${GO_VERSION}' -X main.BuildTime=${BUILD_TIME} -X main.CommitID=${COMMIT_ID}"
 
-GO=$$GOROOT/bin/go
+GO=$$GOROOT/build/go
 
 all: gotool build
 
